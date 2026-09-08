@@ -1,20 +1,23 @@
-from flask import Blueprint, render_template, request, jsonify, session, current_app, abort
-from db import db, User, DashboardLayout
+from flask import Blueprint, render_template, request, jsonify, session, current_app, abort, make_response
+from db import db, User, DashboardLayout, StockLevel, Transfer, Product, SalesOrder
 from functools import wraps
 from jsonschema import validate, ValidationError
 import json
 import os
+import secrets
+import logic
 
 # blueprint
 dashboard_bp = Blueprint("dashboard", __name__)
 
 # Load JSON schema
-SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "docs", "schemas", "dashboard_layout.schema.json")
+SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "../docs/schemas/dashboard_layout.schema.json")
 if not os.path.exists(SCHEMA_PATH):
     # allow top-level docs path in repo root if blueprint is run from root
     SCHEMA_PATH = os.path.join(os.getcwd(), "docs", "schemas", "dashboard_layout.schema.json")
 with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
     LAYOUT_SCHEMA = json.load(f)
+
 
 def login_required(f):
     @wraps(f)
@@ -23,6 +26,30 @@ def login_required(f):
             abort(401)
         return f(*args, **kwargs)
     return wrapped
+
+
+def require_manager(f):
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        if session.get("role") != "manager":
+            return jsonify({"error": "forbidden"}), 403
+        return f(*args, **kwargs)
+    return wrapped
+
+
+def require_csrf(f):
+    """Double-submit cookie CSRF validator for JSON API endpoints."""
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        # Only enforce for state-changing JSON requests
+        if request.method in ("POST", "PUT", "DELETE"):
+            token_header = request.headers.get("X-CSRF-Token")
+            token_cookie = request.cookies.get("csrf_token")
+            if not token_header or not token_cookie or token_header != token_cookie:
+                return jsonify({"error": "invalid_csrf"}), 403
+        return f(*args, **kwargs)
+    return wrapped
+
 
 @dashboard_bp.route("/app/dashboard")
 @login_required
@@ -35,11 +62,25 @@ def view_dashboard():
         layout = DashboardLayout.query.filter_by(role=role).order_by(DashboardLayout.updated_at.desc()).first()
 
     layout_json = layout.layout_json if layout else {"panels": [{"id": "kpi_strip", "position": {"x":0,"y":0,"w":12,"h":1}}]}
-    return render_template("dashboard.html", layout_json=layout_json)
+
+    # ensure a fresh csrf token cookie is set for JS clients
+    token = secrets.token_urlsafe(32)
+    resp = make_response(render_template("dashboard.html", layout_json=layout_json))
+    resp.set_cookie("csrf_token", token, httponly=False, samesite=current_app.config.get("SESSION_COOKIE_SAMESITE", "Lax"))
+    return resp
 
 #
 # API endpoints
 #
+
+@dashboard_bp.route("/api/csrf-token", methods=["GET"])
+@login_required
+def api_csrf_token():
+    token = secrets.token_urlsafe(32)
+    resp = jsonify({"csrf_token": token})
+    resp.set_cookie("csrf_token", token, httponly=False, samesite=current_app.config.get("SESSION_COOKIE_SAMESITE", "Lax"))
+    return resp
+
 
 @dashboard_bp.route("/api/dashboard/layouts/current", methods=["GET"])
 @login_required
@@ -60,8 +101,10 @@ def api_get_current_layout():
         "updated_at": layout.updated_at.isoformat() if layout.updated_at else None
     })
 
+
 @dashboard_bp.route("/api/dashboard/layouts", methods=["POST"])
 @login_required
+@require_csrf
 def api_create_layout():
     user_id = session.get("user_id")
     payload = request.get_json()
@@ -80,8 +123,10 @@ def api_create_layout():
     db.session.commit()
     return jsonify({"id": new_layout.id, "version": new_layout.version}), 201
 
+
 @dashboard_bp.route("/api/dashboard/layouts/<int:layout_id>", methods=["PUT"])
 @login_required
+@require_csrf
 def api_update_layout(layout_id):
     user_id = session.get("user_id")
     payload = request.get_json()
@@ -125,23 +170,74 @@ def api_update_layout(layout_id):
     db.session.commit()
     return jsonify({"id": layout.id, "version": layout.version}), 200
 
+
+@dashboard_bp.route("/api/dashboard/layouts/role-defaults", methods=["GET"])
+@login_required
+@require_manager
+def api_get_role_defaults():
+    layouts = DashboardLayout.query.filter(DashboardLayout.user_id == None).all()
+    return jsonify([l.to_dict() for l in layouts])
+
+
+@dashboard_bp.route("/api/dashboard/layouts/role-defaults", methods=["POST"])
+@login_required
+@require_manager
+@require_csrf
+def api_create_role_default():
+    payload = request.get_json()
+    if not payload or "layout_json" not in payload or "role" not in payload:
+        return jsonify({"error": "missing_payload"}), 400
+    layout_json = payload["layout_json"]
+    role = payload["role"]
+
+    try:
+        validate(instance=layout_json, schema=LAYOUT_SCHEMA)
+    except ValidationError as e:
+        return jsonify({"error": "invalid_layout", "message": str(e)}), 400
+
+    new_layout = DashboardLayout(user_id=None, role=role, layout_json=layout_json, version=1)
+    db.session.add(new_layout)
+    db.session.commit()
+    return jsonify({"id": new_layout.id, "version": new_layout.version}), 201
+
+
 @dashboard_bp.route("/api/panels/<panel_id>", methods=["GET"])
 @login_required
 def api_panel(panel_id):
-    # stubbed panel payloads — replace with real logic that queries DB or services
+    # Build stock list from DB
+    stock_rows = StockLevel.query.all()
+    stock = []
+    for s in stock_rows:
+        prod = Product.query.get(s.product_id)
+        stock.append({
+            "sku": prod.sku if prod else None,
+            "product": prod.name if prod else None,
+            "qty": s.qty,
+            "min_qty": s.min_qty
+        })
+
+    transfers_rows = Transfer.query.all()
+    transfers = []
+    for t in transfers_rows:
+        transfers.append({
+            "ref": t.ref,
+            "product_id": t.product_id,
+            "qty": t.qty,
+            "due": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
+            "state": t.state
+        })
+
     if panel_id == "kpi_strip":
-        payload = {
-            "total_skus": 120,
-            "pending_transfers": 3,
-            "alerts": 5
-        }
+        payload = logic.compute_stats(stock, transfers)
     elif panel_id == "stock_alerts":
-        payload = {
-            "alerts": [
-                {"sku": "SKU-1042", "name": "Steel Bolts", "days_left": 2, "severity": "critical"},
-                {"sku": "SKU-2291", "name": "Packing Tape", "days_left": 4, "severity": "low"}
-            ]
-        }
+        alerts = logic.get_alerts(stock)
+        payload = {"alerts": alerts}
+    elif panel_id == "transfers":
+        payload = {"transfers": transfers}
+    elif panel_id == "recent_activity":
+        # use SalesOrder as recent activity
+        orders = SalesOrder.query.order_by(SalesOrder.order_date.desc()).limit(10).all()
+        payload = {"orders": [o.to_dict() for o in orders]}
     else:
         payload = {"message": f"panel {panel_id} not implemented yet"}
 

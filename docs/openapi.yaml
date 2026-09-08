@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Jodo Dashboard API (excerpt)
+  title: Jodo Dashboard API (Person 2 endpoints)
   version: 0.1.0
 paths:
   /health:
@@ -15,12 +15,53 @@ paths:
       responses:
         "200":
           description: App version
+  /login:
+    post:
+      summary: User login (form or JSON)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Logged in
+  /app/dashboard:
+    get:
+      summary: Render the dashboard HTML (requires session)
+      responses:
+        "200":
+          description: HTML page
+  /api/csrf-token:
+    get:
+      summary: Retrieve CSRF token (sets cookie)
+      responses:
+        "200":
+          description: Token
   /api/dashboard/layouts/current:
     get:
       summary: Get current user's dashboard layout
       responses:
         "200":
           description: Layout object
+  /api/dashboard/layouts:
+    post:
+      summary: Create user layout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                layout_json: {}
+      responses:
+        "201":
+          description: Created
   /api/dashboard/layouts/{id}:
     put:
       summary: Update layout with optimistic locking
@@ -31,7 +72,6 @@ paths:
           schema:
             type: integer
       requestBody:
-        required: true
         content:
           application/json:
             schema:
@@ -47,3 +87,29 @@ paths:
           description: Invalid payload
         "409":
           description: Stale update
+  /api/dashboard/layouts/role-defaults:
+    get:
+      summary: List role-default layouts (manager only)
+    post:
+      summary: Create a role-default layout (manager only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                layout_json: {}
+  /api/panels/{panel_id}:
+    get:
+      summary: Get panel data (kpi_strip, stock_alerts, transfers, recent_activity)
+      parameters:
+        - name: panel_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: JSON payload per panel

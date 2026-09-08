@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{% block title %}Jodo Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- SortableJS for drag/drop (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script>
+    <script src="/static/script.js" defer></script>
+    {% block head_extra %}{% endblock %}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="header">
+      <div class="brand">Jodo</div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/app/dashboard">Dashboard</a>
+        <a href="/app/inventory">Inventory</a>
+        <a href="/app/team">Team</a>
+      </nav>
+      <div>
+        <button id="open-customize" class="btn secondary">Customize</button>
+      </div>
+    </header>
+    <main id="main">
+      <div class="container">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+    {% block scripts %}{% endblock %}
+    <!-- Customize modal -->
+    <div id="modal-backdrop" class="modal-backdrop" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="customize-title">
+        <h2 id="customize-title">Customize Dashboard</h2>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">
+            <h3>Available panels</h3>
+            <div id="panel-registry" class="panel-list"></div>
+          </div>
+          <div style="width:300px">
+            <h3>Actions</h3>
+            <p class="small">Add panels to your dashboard. Drag to reorder. Use keyboard arrows to move selected panel.</p>
+            <div style="margin-top:12px">
+              <button id="save-layout" class="btn">Save</button>
+              <button id="close-customize" class="btn secondary">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,19 +1,19 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8"/>
-    <title>Dashboard</title>
-    <script>
-      // embed initial layout data so the page can render server-side initially
-      window.INITIAL_LAYOUT = {{ layout_json|tojson }};
-    </script>
-  </head>
-  <body>
+{% extends 'base.html' %}
+{% block title %}Dashboard — Jodo{% endblock %}
+{% block content %}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <h1>Dashboard</h1>
+    <div class="save-state" id="save-state">Not saved</div>
+  </div>
 
-    <div id="panels"></div>
+  {# Server should inject layout JSON here as a script tag with id="layout-json". If not present, client will fallback to localStorage/default. #}
+  {% if layout %}
+    <script type="application/json" id="layout-json">{{ layout|tojson }}</script>
+  {% endif %}
 
-    <button id="customize">Customize (reorder/save)</button>
-    <script src="/static/script.js"></script>
-  </body>
-</html>
+  <div class="grid-wrap">
+    <div id="dashboard-grid">
+      {# Panels will be rendered by client-side JS based on layout-json or fallback #}
+    </div>
+  </div>
+{% endblock %}
