@@ -9,7 +9,7 @@ Creates:
 - sample team members
 - role-default layouts for 'user' and 'manager'
 """
-from db import db, User, Product, StockLevel, Transfer, SalesOrder, TeamMember, DashboardLayout
+from app.db import db, User, Product, StockLevel, Transfer, SalesOrder, TeamMember, DashboardLayout
 from app import create_app
 from werkzeug.security import generate_password_hash
 import json
