@@ -1,0 +1,9 @@
+- [ ] Branch created from main, branch name impl/person5-start
+- [ ] Files added: .github/dependabot.yml, .github/workflows/ci.yml, Dockerfile, docker-compose.yml
+- [ ] Logging & request-id middleware added and wired into app factory
+- [ ] Audit log migration & model added
+- [ ] Backup scripts added under scripts/
+- [ ] Prometheus / metrics route added
+- [ ] Rate limiter middleware stub added
+- [ ] E2E test stub added
+- [ ] Reviewer: assign Person1 or Person2 for DB & API dependency check
