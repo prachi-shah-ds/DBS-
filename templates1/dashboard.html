@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Dashboard</h2>
+  <div id="layout-root" data-layout-id="{{ layout_id|default('') }}">
+    <!-- Inline layout JSON for fast render -->
+    <script id="INITIAL_LAYOUT" type="application/json">{{ layout|tojson }}</script>
+    <div id="panels-container">
+      <!-- JS will render panels here -->
+    </div>
+  </div>
+  <div>
+    <button id="customize-btn" data-test="customize-btn">Customize</button>
+    <button id="save-layout" data-test="save-layout">Save</button>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // minimal client: render panels from initial layout and lazy-load panel data
+  const initialLayout = JSON.parse(document.getElementById("INITIAL_LAYOUT").textContent || "{}");
+  const container = document.getElementById("panels-container");
+  function addPanel(p) {
+    const el = document.createElement("div");
+    el.className = "panel";
+    el.dataset.panelId = p.id;
+    el.innerHTML = `<h3>${p.id}</h3><div class="panel-body" data-panel="${p.id}">Loading...</div>`;
+    container.appendChild(el);
+    // fetch panel data
+    fetch(`/api/panels/${p.id}`).then(r => r.json()).then(j => {
+      el.querySelector(".panel-body").textContent = JSON.stringify(j.data);
+    }).catch(e => {
+      el.querySelector(".panel-body").textContent = "Error loading";
+    });
+  }
+  (initialLayout.panels || []).forEach(addPanel);
+  // Save (simple PUT to /api/dashboard/layouts/{id} if layout_id exists)
+  document.getElementById("save-layout").addEventListener("click", async () => {
+    const layoutId = document.getElementById("layout-root").dataset.layoutId;
+    const panels = (initialLayout.panels || []).map(p => p); // in a real UI you'd read positions
+    const payload = { panels: panels, version: (initialLayout.version || 1) };
+    if (layoutId) {
+      const res = await fetch(`/api/dashboard/layouts/${layoutId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (res.status === 200) alert("Saved");
+      else if (res.status === 409) alert("Conflict: layout changed elsewhere");
+      else alert("Save failed");
+    } else {
+      const res = await fetch(`/api/dashboard/layouts`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (res.status === 201) {
+        const data = await res.json();
+        document.getElementById("layout-root").dataset.layoutId = data.id;
+        alert("Saved");
+      } else alert("Save failed");
+    }
+  });
+</script>
+{% endblock %}

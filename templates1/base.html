@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Jodo — {{ title or "Dashboard" }}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Jodo</h1>
+      <nav>
+        <a href="/app/dashboard">Dashboard</a> |
+        <a href="/logout">Logout</a>
+      </nav>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    <script src="/static/script.js"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
