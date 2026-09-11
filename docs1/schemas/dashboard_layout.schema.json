@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DashboardLayout",
+  "type": "object",
+  "required": ["panels"],
+  "properties": {
+    "panels": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": ["id", "position"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["kpi_strip", "stock_alerts", "transfers", "sales_summary", "team_status", "recent_activity"]
+          },
+          "position": {
+            "type": "object",
+            "required": ["x", "y", "w", "h"],
+            "properties": {
+              "x": { "type": "integer", "minimum": 0 },
+              "y": { "type": "integer", "minimum": 0 },
+              "w": { "type": "integer", "minimum": 1, "maximum": 12 },
+              "h": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "visible": { "type": "boolean" },
+          "settings": { "type": ["object", "null"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
