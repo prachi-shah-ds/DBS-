@@ -30,6 +30,10 @@
       </div>
     </main>
     {% block scripts %}{% endblock %}
+
+    <!-- aria-live announcer for accessibility -->
+    <div id="announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
     <!-- Customize modal -->
     <div id="modal-backdrop" class="modal-backdrop" aria-hidden="true">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="customize-title">
@@ -39,9 +43,24 @@
             <h3>Available panels</h3>
             <div id="panel-registry" class="panel-list"></div>
           </div>
-          <div style="width:300px">
+          <div style="flex:1">
+            <h3>Selected panels</h3>
+            <div id="selected-panels" style="min-height:120px;border:1px dashed #e6e9ee;padding:8px;border-radius:6px"></div>
+            <!-- Panel settings area -->
+            <div id="panel-settings" style="margin-top:12px">
+              <h4 id="panel-settings-title">Panel settings</h4>
+              <form id="panel-settings-form">
+                <!-- dynamically filled -->
+              </form>
+              <div style="margin-top:8px">
+                <button id="panel-settings-save" class="btn">Save settings</button>
+                <button id="panel-settings-reset" class="btn secondary">Reset</button>
+              </div>
+            </div>
+          </div>
+          <div style="width:260px">
             <h3>Actions</h3>
-            <p class="small">Add panels to your dashboard. Drag to reorder. Use keyboard arrows to move selected panel.</p>
+            <p class="small">Add panels to your dashboard. Drag to reorder. Use Move to enable keyboard reordering for a panel.</p>
             <div style="margin-top:12px">
               <button id="save-layout" class="btn">Save</button>
               <button id="close-customize" class="btn secondary">Close</button>
@@ -50,5 +69,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Conflict modal -->
+    <div id="conflict-backdrop" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="conflict-title" style="display:none">
+      <div class="modal" role="document">
+        <h2 id="conflict-title">Layout conflict</h2>
+        <p id="conflict-message">The layout has changed on the server since you loaded it. Choose how to proceed.</p>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button id="conflict-accept" class="btn">Accept server version</button>
+          <button id="conflict-overwrite" class="btn">Overwrite server (force)</button>
+          <button id="conflict-cancel" class="btn secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
   </body>
 </html>
