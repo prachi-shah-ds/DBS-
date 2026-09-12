@@ -16,7 +16,7 @@ def upgrade():
     op.create_table(
         'audit_logs',
         sa.Column('id', sa.Integer, primary_key=True),
-        sa.Column('user_id', sa.Integer, sa.ForeignKey('user.id'), nullable=True,
+        sa.Column('user_id', sa.Integer, sa.ForeignKey('user.id'), nullable=True),
         sa.Column('action', sa.String(128), nullable=False),
         sa.Column('target', sa.String(256), nullable=True),
         sa.Column('details', sa.Text, nullable=True),

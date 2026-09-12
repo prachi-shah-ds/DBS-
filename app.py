@@ -21,7 +21,8 @@ def create_app():
     csrf.init_app(app)
 
     from auth.routes import auth_bp
-    from dashboard.routes import dashboard_bp
+    # use dashboard1 as requested
+    from dashboard1.routes import dashboard_bp as dashboard_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
